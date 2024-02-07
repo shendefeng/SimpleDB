@@ -9,6 +9,16 @@ import java.io.Serializable;
 public class RecordId implements Serializable {
 
     private static final long serialVersionUID = 1L;
+    /**
+     * the pageid of the page on which the tuple resides
+     */
+    private PageId pid;
+
+    /**
+     * the tuple number within the page.
+     */
+    private int tupleNo;
+
 
     /**
      * Creates a new RecordId referring to the specified PageId and tuple
@@ -21,6 +31,8 @@ public class RecordId implements Serializable {
      */
     public RecordId(PageId pid, int tupleno) {
         // some code goes here
+        this.pid = pid;
+        this.tupleNo = tupleno;
     }
 
     /**
@@ -28,7 +40,7 @@ public class RecordId implements Serializable {
      */
     public int getTupleNumber() {
         // some code goes here
-        return 0;
+        return this.tupleNo;
     }
 
     /**
@@ -36,7 +48,7 @@ public class RecordId implements Serializable {
      */
     public PageId getPageId() {
         // some code goes here
-        return null;
+        return this.pid;
     }
 
     /**
@@ -48,7 +60,15 @@ public class RecordId implements Serializable {
     @Override
     public boolean equals(Object o) {
         // some code goes here
-        throw new UnsupportedOperationException("implement this");
+        if (!(o instanceof  RecordId)) {
+            return false;
+        }
+        RecordId other = (RecordId) o;
+        if (this.pid.equals(other.getPageId()) && this.getTupleNumber() == other.getTupleNumber()) {
+            return true;
+        } else {
+            return false;
+        }
     }
 
     /**
@@ -60,8 +80,7 @@ public class RecordId implements Serializable {
     @Override
     public int hashCode() {
         // some code goes here
-        throw new UnsupportedOperationException("implement this");
-
+        return this.pid.getTableId()*100+this.pid.getPageNumber()*10+this.tupleNo;
     }
 
 }

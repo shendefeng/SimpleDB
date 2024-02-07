@@ -22,6 +22,10 @@ import java.util.concurrent.ConcurrentHashMap;
  * @Threadsafe
  */
 public class Catalog {
+    ConcurrentHashMap<Integer,Table> tableIdMap;
+
+    ConcurrentHashMap<String,Integer> tableNameMap;
+
 
     /**
      * Constructor.
@@ -29,6 +33,8 @@ public class Catalog {
      */
     public Catalog() {
         // some code goes here
+        tableIdMap = new ConcurrentHashMap<>();
+        tableNameMap = new ConcurrentHashMap<>();
     }
 
     /**
@@ -42,6 +48,8 @@ public class Catalog {
      */
     public void addTable(DbFile file, String name, String pkeyField) {
         // some code goes here
+        tableIdMap.put(file.getId(),new Table(file,name,pkeyField));
+        tableNameMap.put(name,file.getId());
     }
 
     public void addTable(DbFile file, String name) {
@@ -65,7 +73,10 @@ public class Catalog {
      */
     public int getTableId(String name) throws NoSuchElementException {
         // some code goes here
-        return 0;
+        if(name != null && tableNameMap.containsKey(name)){
+            return tableNameMap.get(name);
+        }
+        throw new NoSuchElementException("table doesn't exist!");
     }
 
     /**
@@ -76,7 +87,10 @@ public class Catalog {
      */
     public TupleDesc getTupleDesc(int tableid) throws NoSuchElementException {
         // some code goes here
-        return null;
+        if(tableIdMap.containsKey(tableid)){
+            return tableIdMap.get(tableid).getFile().getTupleDesc();
+        }
+        throw new NoSuchElementException("table doesn't exist!");
     }
 
     /**
@@ -87,27 +101,37 @@ public class Catalog {
      */
     public DbFile getDatabaseFile(int tableid) throws NoSuchElementException {
         // some code goes here
-        return null;
+        if(tableIdMap.containsKey(tableid)){
+            return tableIdMap.get(tableid).getFile();
+        }
+        throw new NoSuchElementException("table doesn't exist!");
     }
 
     public String getPrimaryKey(int tableid) {
         // some code goes here
-        return null;
+        if(tableIdMap.containsKey(tableid)){
+            return tableIdMap.get(tableid).getPkeyField();
+        }
+        throw new NoSuchElementException("table doesn't exist!");
     }
 
     public Iterator<Integer> tableIdIterator() {
         // some code goes here
-        return null;
+        return tableIdMap.keySet().iterator();
     }
 
     public String getTableName(int id) {
         // some code goes here
-        return null;
+        if(tableIdMap.containsKey(id)){
+            return tableIdMap.get(id).getName();
+        }
+        throw new NoSuchElementException("table doesn't exist!");
     }
     
     /** Delete all tables from the catalog */
     public void clear() {
         // some code goes here
+        tableIdMap.clear();
     }
     
     /**
@@ -132,17 +156,20 @@ public class Catalog {
                 for (String e : els) {
                     String[] els2 = e.trim().split(" ");
                     names.add(els2[0].trim());
-                    if (els2[1].trim().equalsIgnoreCase("int"))
+                    if (els2[1].trim().equalsIgnoreCase("int")){
                         types.add(Type.INT_TYPE);
-                    else if (els2[1].trim().equalsIgnoreCase("string"))
+                    }
+                    else if (els2[1].trim().equalsIgnoreCase("string")) {
                         types.add(Type.STRING_TYPE);
+                    }
                     else {
                         System.out.println("Unknown type " + els2[1]);
                         System.exit(0);
                     }
                     if (els2.length == 3) {
-                        if (els2[2].trim().equals("pk"))
+                        if (els2[2].trim().equals("pk")) {
                             primaryKey = els2[0].trim();
+                        }
                         else {
                             System.out.println("Unknown annotation " + els2[2]);
                             System.exit(0);

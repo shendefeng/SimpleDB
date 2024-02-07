@@ -1,7 +1,13 @@
 package simpledb.execution;
 
 import simpledb.common.Type;
+import simpledb.storage.Field;
 import simpledb.storage.Tuple;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Knows how to compute some aggregate over a set of IntFields.
@@ -9,6 +15,11 @@ import simpledb.storage.Tuple;
 public class IntegerAggregator implements Aggregator {
 
     private static final long serialVersionUID = 1L;
+    private int gbfield;
+    private int afield;
+    private Type gbfieldType;
+    private Op what;
+    private Map<Field, List<Field>> group;
 
     /**
      * Aggregate constructor
@@ -27,6 +38,11 @@ public class IntegerAggregator implements Aggregator {
 
     public IntegerAggregator(int gbfield, Type gbfieldtype, int afield, Op what) {
         // some code goes here
+        this.gbfield = gbfield;
+        this.gbfieldType = gbfieldtype;
+        this.afield = afield;
+        this.what = what;
+        this.group = new HashMap<>();
     }
 
     /**
@@ -38,6 +54,20 @@ public class IntegerAggregator implements Aggregator {
      */
     public void mergeTupleIntoGroup(Tuple tup) {
         // some code goes here
+        Field aField = tup.getField(afield);
+        Field gField = null;
+        if(this.gbfield!=-1){
+            gField = tup.getField(this.gbfield);
+        }
+        // 创建了聚合分组
+        // 为什么要保留原来的元素, 因为可能有多个元素, 会往下继续读取
+        if(this.group.containsKey(gField)){
+            group.get(gField).add(aField);
+        }else{
+            List<Field> list = new ArrayList<>();
+            list.add(aField);
+            group.put(gField,list);
+        }
     }
 
     /**
@@ -50,8 +80,7 @@ public class IntegerAggregator implements Aggregator {
      */
     public OpIterator iterator() {
         // some code goes here
-        throw new
-        UnsupportedOperationException("please implement me for lab2");
+        return new AggregateIter(group,gbfield,gbfieldType,what);
     }
 
 }

@@ -125,6 +125,7 @@ public class LogFile {
     // we're about to append a log record. if we weren't sure whether the
     // DB wants to do recovery, we're sure now -- it didn't. So truncate
     // the log.
+    // 追加日志的方法: 开头设置checkpoint点，再把日志追加到后面
     void preAppend() throws IOException {
         totalRecords++;
         if(recoveryUndecided){
@@ -460,6 +461,42 @@ public class LogFile {
             synchronized(this) {
                 preAppend();
                 // some code goes here
+                preAppend();
+                // some code goes here
+                raf.seek(tidToFirstLogRecord.get(tid.getId()));
+                Set<PageId> rollbackPage = new HashSet<>();
+                while (true){
+                    try {
+                        int curType = raf.readInt();
+                        long curTid = raf.readLong();
+                        // 每次回滚对应页只能回滚上一次版本，因此一个页中的多次修改记录也只能rollback一次
+                        switch (curType){
+                            // 除了update其他全都略过
+                            case CHECKPOINT_RECORD:
+                                int keySize = raf.readInt();
+                                while (keySize-- > 0) {
+                                    raf.readLong();
+                                    raf.readLong();
+                                }
+                                break;
+                            case UPDATE_RECORD:
+                                Page beforeImg = readPageData(raf);
+                                Page afterImg = readPageData(raf);
+                                if(curTid == tid.getId() && !rollbackPage.contains(beforeImg.getId())){
+                                    rollbackPage.add(beforeImg.getId());
+                                    DbFile file = Database.getCatalog().getDatabaseFile(beforeImg.getId().getTableId());
+                                    file.writePage(beforeImg);
+                                    Database.getBufferPool().discardPage(afterImg.getId());
+                                }
+
+                        }
+                        // 略过offset
+                        raf.readLong();
+                    }catch (EOFException e){
+                        break;
+                    }
+
+                }
             }
         }
     }
@@ -478,15 +515,117 @@ public class LogFile {
         }
     }
 
-    /** Recover the database system by ensuring that the updates of
+    /**
+     * recover的点应该正在活跃的事务中最早的那个
+     * tidToFirstLogRecord中记录的key只有存活的
+     */
+    public synchronized long getRecoverOffset(){
+        try {
+            raf.seek(0);
+            long checkPoint = raf.readLong();
+            if(checkPoint == -1){
+                return -1L;
+            }else {
+                // 移动到检查点,并略过日志头（type,tid信息）
+                raf.seek(checkPoint);
+                raf.readInt();
+                raf.readLong();
+                int keySize = raf.readInt();
+                long recoverOffset = Long.MAX_VALUE;
+                while (keySize-- > 0) {
+                    raf.readLong();
+                    long offset = raf.readLong();
+                    if(offset < recoverOffset){
+                        recoverOffset = offset;
+                    }
+                }
+                return recoverOffset;
+
+            }
+
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * 理论上存在刚好执行到commit写入log后但是未force此时crash了，这时需要redo
+     * 而对于在事务未提交却crash的则需要undo
+     * Recover the database system by ensuring that the updates of
         committed transactions are installed and that the
         updates of uncommitted transactions are not installed.
     */
     public void recover() throws IOException {
         synchronized (Database.getBufferPool()) {
             synchronized (this) {
+
                 recoveryUndecided = false;
                 // some code goes here
+
+                raf = new RandomAccessFile(logFile, "rw");
+                Map<Long, List<Page>> beforeImgs = new HashMap<>();
+                Map<Long, List<Page>> afterImgs = new HashMap<>();
+                HashSet<Long> committed = new HashSet<>();
+                long recoverOffset = getRecoverOffset();
+                if(recoverOffset != -1L){
+                    raf.seek(recoverOffset);
+                }
+
+                while (true){
+                    try {
+                        int curType = raf.readInt();
+                        long curTid = raf.readLong();
+                        switch (curType){
+
+                            case COMMIT_RECORD:
+                                committed.add(curTid);
+                                break;
+
+                            case CHECKPOINT_RECORD:
+                                int keySize = raf.readInt();
+                                while (keySize-- > 0) {
+                                    raf.readLong();
+                                    raf.readLong();
+                                }
+                                break;
+
+                            case UPDATE_RECORD:
+                                Page beforeImg = readPageData(raf);
+                                Page afterImg = readPageData(raf);
+                                List<Page> undoList = beforeImgs.getOrDefault(curTid,new ArrayList<>());
+                                List<Page> redoList = afterImgs.getOrDefault(curTid,new ArrayList<>());
+                                undoList.add(beforeImg);
+                                redoList.add(afterImg);
+                                beforeImgs.put(curTid,undoList);
+                                afterImgs.put(curTid,redoList);
+
+                        }
+                        // 略过offset
+                        raf.readLong();
+                    }catch (EOFException e){
+                        break;
+                    }
+
+                }
+                // 处理未提交的事务利用before进行undo
+                for (long tid :beforeImgs.keySet()) {
+                    if (!committed.contains(tid)) {
+                        List<Page> pages = beforeImgs.get(tid);
+                        for (Page undo : pages) {
+                            Database.getCatalog().getDatabaseFile(undo.getId().getTableId()).writePage(undo);
+                        }
+                    }
+                }
+
+                //处理已提交事务利用after进行redo
+                for (long tid : committed) {
+                    if (afterImgs.containsKey(tid)) {
+                        List<Page> pages = afterImgs.get(tid);
+                        for (Page redo : pages) {
+                            Database.getCatalog().getDatabaseFile(redo.getId().getTableId()).writePage(redo);
+                        }
+                    }
+                }
             }
          }
     }

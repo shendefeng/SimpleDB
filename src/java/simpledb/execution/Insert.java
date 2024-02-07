@@ -2,11 +2,15 @@ package simpledb.execution;
 
 import simpledb.common.Database;
 import simpledb.common.DbException;
+import simpledb.common.Type;
 import simpledb.storage.BufferPool;
+import simpledb.storage.IntField;
 import simpledb.storage.Tuple;
 import simpledb.storage.TupleDesc;
 import simpledb.transaction.TransactionAbortedException;
 import simpledb.transaction.TransactionId;
+
+import java.io.IOException;
 
 /**
  * Inserts tuples read from the child operator into the tableId specified in the
@@ -15,6 +19,15 @@ import simpledb.transaction.TransactionId;
 public class Insert extends Operator {
 
     private static final long serialVersionUID = 1L;
+    private TransactionId tid;
+    private OpIterator[] children;
+    private int tableId;
+    private TupleDesc tupleDesc;
+    /**
+     * 需要将插入的结果储存下来，否则外部会一直调用fetchNext
+     * 具体参阅InsertTest validateInsert
+     */
+    private Tuple insertRes;
 
     /**
      * Constructor.
@@ -32,23 +45,34 @@ public class Insert extends Operator {
     public Insert(TransactionId t, OpIterator child, int tableId)
             throws DbException {
         // some code goes here
+        this.tid = t;
+        this.children = new OpIterator[]{child};
+        this.tableId = tableId;
+        this.tupleDesc = new TupleDesc(new Type[]{Type.INT_TYPE}, new String[]{"insertNums"});
     }
 
     public TupleDesc getTupleDesc() {
         // some code goes here
-        return null;
+        return this.tupleDesc;
     }
 
     public void open() throws DbException, TransactionAbortedException {
         // some code goes here
+        super.open();
+        children[0].open();
+        this.insertRes = null;
     }
 
     public void close() {
         // some code goes here
+        super.close();
+        children[0].close();
     }
 
     public void rewind() throws DbException, TransactionAbortedException {
         // some code goes here
+        this.close();
+        this.open();
     }
 
     /**
@@ -66,17 +90,36 @@ public class Insert extends Operator {
      */
     protected Tuple fetchNext() throws TransactionAbortedException, DbException {
         // some code goes here
-        return null;
+        // 已经计算插入过了，所以直接返回null，防止迭代器一直迭代下去
+        if(insertRes != null){
+            return null;
+        }
+        int insert = 0 ;
+        while(children[0].hasNext()){
+            try {
+                Database.getBufferPool().insertTuple(tid,this.tableId,children[0].next());
+                insert++;
+            }catch (IOException e){
+                System.out.println("Insert Tuples into DataBase is Failed !!!");
+                e.printStackTrace();
+            }
+        }
+        insertRes = new Tuple(this.tupleDesc);
+        insertRes.setField(0,new IntField(insert));
+
+        return insertRes;
+
     }
 
     @Override
     public OpIterator[] getChildren() {
         // some code goes here
-        return null;
+        return this.children;
     }
 
     @Override
     public void setChildren(OpIterator[] children) {
         // some code goes here
+        this.children = children;
     }
 }

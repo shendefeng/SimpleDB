@@ -13,6 +13,7 @@ import simpledb.common.Type;
 import simpledb.execution.Aggregator;
 import simpledb.execution.IntegerAggregator;
 import simpledb.execution.OpIterator;
+import simpledb.storage.Tuple;
 import simpledb.systemtest.SimpleDbTestBase;
 
 public class IntegerAggregatorTest extends SimpleDbTestBase {
@@ -36,7 +37,8 @@ public class IntegerAggregatorTest extends SimpleDbTestBase {
                     3, 4,
                     3, 6,
                     5, 7 });
-
+    // 首先这个是一部分，我debug的时候只用了两次循环
+    // 比了四次的话，就是两条数据，1的一组，3的一组，然后根据width=2，创建TupleDesc，有两条数据
     // verify how the results progress after a few merges
     this.sum = new int[][] {
       { 1, 2 },
@@ -113,6 +115,25 @@ public class IntegerAggregatorTest extends SimpleDbTestBase {
       TestUtil.matchAllTuples(TestUtil.createTupleList(width1, step), it);
     }
   }
+  @Test public void merge() throws Exception {
+    scan1.open();
+    IntegerAggregator agg = new IntegerAggregator(0, Type.INT_TYPE, 1, Aggregator.Op.SUM);
+
+    // Merge all tuples into the aggregator
+    while (scan1.hasNext()) {
+      agg.mergeTupleIntoGroup(scan1.next());
+    }
+
+    // Get and verify the aggregation result
+    OpIterator it = agg.iterator();
+    it.open();
+    while (it.hasNext()) {
+      Tuple tuple = it.next();
+      System.out.println(tuple);  // Print the tuple for debugging
+      // Add your verification code here
+    }
+    it.close();
+  }
 
   /**
    * Test IntegerAggregator.mergeTupleIntoGroup() and iterator() over an avg
@@ -127,6 +148,7 @@ public class IntegerAggregatorTest extends SimpleDbTestBase {
       it = agg.iterator();
       it.open();
       TestUtil.matchAllTuples(TestUtil.createTupleList(width1, step), it);
+
     }
   }
 
