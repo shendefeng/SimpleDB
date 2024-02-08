@@ -4,7 +4,7 @@
 
 如下图：
 
-![结构](https://raw.githubusercontent.com/shendefeng/Picture/main/img/结构.png?token=AODF234UD3OG2BZRMQJEMT3FYS4BY)
+![image](https://github.com/shendefeng/Picture/blob/main/img/%E7%BB%93%E6%9E%84.png)
 
 但是注意，数据访问单位是`Page`。而且Page的大小是我们设置的。
 
@@ -12,7 +12,7 @@
 
 > 注意：DB中的File存储方式都是==随机存储==的。因为我们访问的这个数据页可能在磁盘的任意一个位置。所以File都是`RandomAccessFile`对象。
 
-![image-20240208131813719](https://raw.githubusercontent.com/shendefeng/Picture/main/img/image-20240208131813719.png?token=AODF235ARI5HMD4AEDSHJL3FYS4CA)
+![image](https://github.com/shendefeng/Picture/blob/main/img/image-20240208131813719.png)
 
 从左到右的结构：
 
@@ -28,7 +28,7 @@
 
 每个页能存储的数据量是固定的(默认设定为`DEFAULT_PAGE_SIZE` 为4096KB)，Page的是用槽来存储元组的行数据的。并且根据字节的单位转化和Lab的hint，页面的行数据个数和header存储的bitMap大小如下图所示。
 
-![Page](https://raw.githubusercontent.com/shendefeng/Picture/main/img/Page.png?token=AODF233TXEUWDPQD64TYZILFYS4CG)
+![image](https://github.com/shendefeng/Picture/blob/main/img/Page.png)
 
 # 算子
 
@@ -54,7 +54,7 @@ Filter过滤器：
 
 参考辛平大佬，这里借鉴实例进行说明，
 
-![image-20240208140503998](https://raw.githubusercontent.com/shendefeng/Picture/main/img/image-20240208140503998.png?token=AODF237RJGPI4ULQKFCDU5DFYS4CM)
+![image](https://github.com/shendefeng/Picture/blob/main/img/image-20240208140503998.png)
 
 这里最少有两个表的两个列(字段)，所以在`Join` 类中定义了
 
@@ -152,7 +152,7 @@ public synchronized  void flushPages(TransactionId tid) throws IOException {
 
 这一过程对应于一次sql查询来说就是优化的部分，图片来自幸平大佬的博客：[MIT6.830-2022-lab3实验思路详细讲解_mit lab-CSDN博客](https://blog.csdn.net/weixin_45938441/article/details/128447702)
 
-![image-20240208164517354](https://raw.githubusercontent.com/shendefeng/Picture/main/img/image-20240208164517354.png?token=AODF23ZT4MXSOACHSHZ46WLFYS4CY)
+![image](https://github.com/shendefeng/Picture/blob/main/img/image-20240208164517354.png)
 
 Lab已经完成执行操作的顺序，我只需要完成相应算子的优化即可。(详细见Lab3.md)
 
@@ -166,7 +166,7 @@ Lab已经完成执行操作的顺序，我只需要完成相应算子的优化�
 
 Lab中是根据设置了桶进一步简化数据的比较程度，实现下面的直方图(下面仅能代表大于的情况)
 
-![image-20240208163315374](https://raw.githubusercontent.com/shendefeng/Picture/main/img/image-20240208163315374.png?token=AODF237CJCHNRM3VPU6JJOLFYS4C6)
+![image](https://github.com/shendefeng/Picture/blob/main/img/image-20240208163315374.png)
 
 建立直方图的时候，步骤：
 
@@ -259,7 +259,7 @@ return optjoin(j)
 
 对于锁的粒度从大到小应该是 Database -> Table -> Page -> Tuple。系统实现的是页级锁，也就是在BufferPool中的**Granting Locks**。根据页与锁是**一对多的关系**。而锁与事务之间也是一对多的关系。在BufferPool下定义了页级锁`LockManager`内部类。
 
-![image-20240208164908743](https://raw.githubusercontent.com/shendefeng/Picture/main/img/image-20240208164908743.png?token=AODF232FYVOGKJQZLJD4TV3FYS4DK)
+![image](https://github.com/shendefeng/Picture/blob/main/img/image-20240208164908743.png)
 
 本次设置自选次数是3次，每次等待100ms，通过这一方式实现超时淘汰从而避免死锁的发生。以下是伪代码：
 
@@ -292,7 +292,7 @@ if (!lockManager.acquireLock(pid,tid,lockType,0)){
 
 参考小林Coding的图：[从数据页的角度看 B+ 树 | 小林coding (xiaolincoding.com)](https://xiaolincoding.com/mysql/index/page.html#b-树是如何进行查询的)
 
-![image-20240208183601192](https://raw.githubusercontent.com/shendefeng/Picture/main/img/image-20240208183601192.png?token=AODF235KJE7Q72TP2LGWEF3FYS4DQ)
+![image](https://github.com/shendefeng/Picture/blob/main/img/image-20240208183601192.png)
 
 可以看出有四个页面类：
 

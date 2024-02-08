@@ -236,13 +236,36 @@ public class JoinOptimizer {
             els.add(new HashSet<>(path));
             return;
         }
-        if (curIdx == size) {
+        if (curIdx == v.size()) {
             return;
         }
         path.addFirst(v.get(curIdx));
         dfs(els, v, size, curIdx + 1, path);
         path.removeFirst();
         dfs(els, v, size, curIdx + 1, path);
+    }
+
+    /**
+     * 原来是子集的时间复杂度是n * n!, 现在是n * 2^n
+     * @param join
+     * @return
+     */
+    public HashMap<Integer, List<Set<LogicalJoinNode>>> getMap(List<LogicalJoinNode> join) {
+        int len = join.size();
+        HashMap<Integer, List<Set<LogicalJoinNode>>> map = new HashMap<>();
+        for(int i = 1 ; i < (1 << len) ; i++) {
+            Set<LogicalJoinNode> now = new HashSet<>();
+            int numEle = 0;
+            for(int j = 0 ; j < len ; j ++) {
+                int num = i >> j & 1;
+                if (num == 1) {
+                    numEle ++; now.add(join.get(j));
+                }
+            }
+            map.computeIfAbsent(numEle, k -> new ArrayList<>());
+            map.get(numEle).add(now);
+        }
+        return map;
     }
 
     /**
@@ -272,11 +295,13 @@ public class JoinOptimizer {
 
         // some code goes here
         //Replace the following
+        HashMap<Integer, List<Set<LogicalJoinNode>>> map = getMap(this.joins);
         CostCard bestCostCard = new CostCard();
         PlanCache planCache = new PlanCache();
         // 思路：通过辅助方法获取每个size下最优的连接顺序，不断加入planCache中
         for (int i = 1; i <= joins.size(); i++) {
-            Set<Set<LogicalJoinNode>> subsets = enumerateSubsets(joins, i);
+//            Set<Set<LogicalJoinNode>> subsets = enumerateSubsets(joins, i);
+            List<Set<LogicalJoinNode>> subsets = map.get(i);
             for (Set<LogicalJoinNode> set : subsets) {
                 double bestCostSoFar = Double.MAX_VALUE;
                 bestCostCard = new CostCard();
