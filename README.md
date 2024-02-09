@@ -256,7 +256,7 @@ Extra Credit: 对遍历子集的方法`enumerateSubsets()`进行修改：
 
 完成**两阶段锁协议：** 指所有事务分两个阶段提出加锁和解锁申请：
 
-- 增长阶段( growing phase )：对任何数据进行读写操作之前，首先申请并获得该数据的封锁。
+- 增长阶段(growing phase)：对任何数据进行读写操作之前，首先申请并获得该数据的封锁。
 - 收缩阶段(shrinking phase)：在释放一个封锁后，事务不再申请和获得其他的任何封锁。
 
 对于锁的粒度从大到小应该是 Database -> Table -> Page -> Tuple。系统实现的是页级锁，也就是在BufferPool中的**Granting Locks**。根据页与锁是**一对多的关系**。而锁与事务之间也是一对多的关系。在BufferPool下定义了页级锁`LockManager`内部类。
